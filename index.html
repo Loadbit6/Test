@@ -5,66 +5,73 @@
   </head>
   <body>
     <button onclick="saveTestUser()">Save Test User</button>
+   <script>
+const GITHUB_TOKEN = "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"; // Keep it private!
+const REPO = "loadbit6/shared-auth";
+const FILE_PATH = "shared-auth.json";
+const BRANCH = "main";
 
-    <script>
-      const GITHUB_TOKEN = "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";
-      const REPO = "loadbit6/shared-auth";
-      const FILE_PATH = "shared-auth.json";
-      const BRANCH = "main";
+const testUser = {
+  username: "testing123",
+  passwordHash: "testhash",
+  cookies: { theme: "light" }
+};
 
-      const testUser = {
-        username: "testing123",
-        passwordHash: "testhash",
-        cookies: { theme: "light" }
-      };
+async function saveTestUser() {
+  alert("Attempting to fetch the file...");
 
-      async function saveTestUser() {
-        const apiURL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
+  const apiURL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
 
-        const res = await fetch(apiURL, {
-          headers: {
-            Authorization: `Bearer ${GITHUB_TOKEN}`,
-            Accept: "application/vnd.github.v3+json"
-          }
-        });
+  // Fetch the file
+  const res = await fetch(apiURL, {
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github.v3+json"
+    }
+  });
 
-        if (!res.ok) {
-          console.error("❌ Failed to read file:", await res.text());
-          return;
-        }
+  if (!res.ok) {
+    const errorMessage = await res.text();
+    alert("❌ Failed to read file: " + errorMessage);
+    return;
+  }
 
-        const fileData = await res.json();
-        const existing = JSON.parse(atob(fileData.content));
+  alert("File fetched successfully!");
 
-        // Add test user
-        existing.users = existing.users || {};
-        existing.users[testUser.username] = {
-          passwordHash: testUser.passwordHash,
-          cookies: testUser.cookies
-        };
+  const fileData = await res.json();
+  const existing = JSON.parse(atob(fileData.content));
 
-        const updatedContent = btoa(JSON.stringify(existing, null, 2));
+  // Add new user
+  existing.users = existing.users || {};
+  existing.users[testUser.username] = {
+    passwordHash: testUser.passwordHash,
+    cookies: testUser.cookies
+  };
 
-        const putRes = await fetch(apiURL, {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${GITHUB_TOKEN}`,
-            Accept: "application/vnd.github.v3+json"
-          },
-          body: JSON.stringify({
-            message: "Add test user",
-            content: updatedContent,
-            sha: fileData.sha,
-            branch: BRANCH
-          })
-        });
+  const updatedContent = btoa(JSON.stringify(existing, null, 2));
 
-        if (!putRes.ok) {
-          console.error("❌ Save failed:", await putRes.text());
-        } else {
-          alert("✅ File saved!");
-        }
-      }
-    </script>
+  // Update the file on GitHub
+  const putRes = await fetch(apiURL, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${GITHUB_TOKEN}`,
+      Accept: "application/vnd.github.v3+json"
+    },
+    body: JSON.stringify({
+      message: "Add test user",
+      content: updatedContent,
+      sha: fileData.sha,
+      branch: BRANCH
+    })
+  });
+
+  if (!putRes.ok) {
+    const errorMessage = await putRes.text();
+    alert("❌ Save failed: " + errorMessage);
+  } else {
+    alert("✅ File saved successfully!");
+  }
+}
+</script>
   </body>
 </html>
