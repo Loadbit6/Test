@@ -1,37 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Create or Login</title>
-  <style>
-    body { font-family: sans-serif; padding: 2em; }
-    .box { max-width: 300px; margin: auto; }
-    input, button { width: 100%; margin: 0.5em 0; padding: 0.5em; }
-  </style>
-</head>
-<body>
-  <div class="box">
-    <h2>Create Account</h2>
-    <input type="text" id="newUsername" placeholder="New Username" />
-    <input type="password" id="newPassword" placeholder="New Password" />
-    <button onclick="createAccount()">Create Account</button>
-  </div>
-
- <script>
-const GITHUB_TOKEN = "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"; // keep private
+<script>
+const GITHUB_TOKEN = "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";
 const REPO = "loadbit6/shared-auth";
 const FILE_PATH = "shared-auth.json";
 const BRANCH = "main";
 
-const newUser = {
-  username: "testuser",
-  passwordHash: "fakehashedpass123",
-  cookies: {
-    theme: "light",
-    layout: "list"
-  }
+const testUser = {
+  username: "testing123",
+  passwordHash: "testhash",
+  cookies: { theme: "light" }
 };
 
-async function updateFileWithNewUser() {
+async function saveTestUser() {
   const apiURL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
 
   const res = await fetch(apiURL, {
@@ -42,46 +21,42 @@ async function updateFileWithNewUser() {
   });
 
   if (!res.ok) {
-    console.error("Error fetching file:", await res.text());
+    console.error("❌ Failed to read file:", await res.text());
     return;
   }
 
   const fileData = await res.json();
-  const content = atob(fileData.content);
-  const json = JSON.parse(content);
+  const existing = JSON.parse(atob(fileData.content));
 
-  // Inject new user into "users"
-  json.users = json.users || {};
-  json.users[newUser.username] = {
-    passwordHash: newUser.passwordHash,
-    cookies: newUser.cookies
+  // Add test user
+  existing.users = existing.users || {};
+  existing.users[testUser.username] = {
+    passwordHash: testUser.passwordHash,
+    cookies: testUser.cookies
   };
 
-  const updatedContent = btoa(JSON.stringify(json, null, 2));
+  const updatedContent = btoa(JSON.stringify(existing, null, 2));
 
-  const result = await fetch(apiURL, {
+  const putRes = await fetch(apiURL, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${GITHUB_TOKEN}`,
       Accept: "application/vnd.github.v3+json"
     },
     body: JSON.stringify({
-      message: `Add user ${newUser.username}`,
+      message: "Add test user",
       content: updatedContent,
       sha: fileData.sha,
       branch: BRANCH
     })
   });
 
-  if (!result.ok) {
-    console.error("Save failed:", await result.text());
-    return;
+  if (!putRes.ok) {
+    console.error("❌ Save failed:", await putRes.text());
+  } else {
+    alert("✅ File saved!");
   }
-
-  alert("✅ Saved! Check your GitHub repo.");
 }
 
-updateFileWithNewUser();
+saveTestUser();
 </script>
-</body>
-</html>
