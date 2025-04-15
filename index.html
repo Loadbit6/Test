@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create or Login</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    .box { max-width: 300px; margin: auto; }
+    input, button { width: 100%; margin: 0.5em 0; padding: 0.5em; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Create Account</h2>
+    <input type="text" id="newUsername" placeholder="New Username" />
+    <input type="password" id="newPassword" placeholder="New Password" />
+    <button onclick="createAccount()">Create Account</button>
+  </div>
+
+  <script>
+    const GITHUB_TOKEN = "YOUR_PAT_HERE"; // keep private
+    const REPO = "YOUR_USERNAME/shared-auth";
+    const FILE_PATH = "shared-auth.json";
+    const BRANCH = "main";
+
+    async function sha256(text) {
+      const data = new TextEncoder().encode(text);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function createAccount() {
+      const username = document.getElementById("newUsername").value.trim().toLowerCase();
+      const password = document.getElementById("newPassword").value;
+
+      const hash = await sha256(password);
+
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github.v3+json"
+        }
+      });
+
+      const result = await res.json();
+      const content = JSON.parse(atob(result.content));
+      const sha = result.sha;
+
+      if (content.users[username]) return alert("Username already exists.");
+
+      content.users[username] = {
+        passwordHash: hash,
+        cookies: {
+          theme: "default"
+        }
+      };
+
+      const updatedContent = btoa(JSON.stringify(content, null, 2));
+
+      await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github.v3+json"
+        },
+        body: JSON.stringify({
+          message: `Add user ${username}`,
+          content: updatedContent,
+          sha: sha,
+          branch: BRANCH
+        })
+      });
+
+      alert(`Account for ${username} created!`);
+    }
+  </script>
+</body>
+</html>
