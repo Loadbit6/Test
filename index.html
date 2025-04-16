@@ -41,7 +41,7 @@
       if (!username) return alert("Please enter a username.");
 
       try {
-        const res = await fetch("https://YOUR_REPLIT_URL/data");
+        const res = await fetch("https://224c158f-f3fa-4707-a2cd-c58bea05f119-00-nfy2p4tau9ew.kirk.replit.dev/data");
         const data = await res.json();
 
         if (!data.users || !data.users[username]) {
