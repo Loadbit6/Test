@@ -1,77 +1,71 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>GitHub Save Test</title>
-  </head>
-  <body>
-    <button onclick="saveTestUser()">Save Test User</button>
-   <script>
-const GITHUB_TOKEN = "github_pat_"+"11BRNLRDY0uOZY5U0rqhwX_AEw4VYvOOlSrwUes7QUKLbilDvivIaIZP5X2e40WgHfX2D54GNXI67bWVbH"; // Keep it private!
-const REPO = "loadbit6/shared-auth";
-const FILE_PATH = "shared-auth.json";
-const BRANCH = "main";
-
-const testUser = {
-  username: "testing123",
-  passwordHash: "testhash",
-  cookies: { theme: "light" }
-};
-
-async function saveTestUser() {
-  alert("Attempting to fetch the file...");
-
-  const apiURL = `https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`;
-
-  // Fetch the file
-  const res = await fetch(apiURL, {
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      Accept: "application/vnd.github.v3+json"
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Portal</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 50px;
+      background: #f0f0f0;
     }
-  });
+    #login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      display: inline-block;
+    }
+    input {
+      padding: 8px;
+      margin: 10px;
+      width: 200px;
+    }
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="login-box">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Enter your username"><br>
+    <button onclick="loginAndLoadCookies()">Login</button>
+  </div>
 
-  if (!res.ok) {
-    const errorMessage = await res.text();
-    alert("❌ Failed to read file: " + errorMessage);
-    return;
-  }
+  <script>
+    async function loginAndLoadCookies() {
+      const username = document.getElementById("username").value.trim();
+      if (!username) return alert("Please enter a username.");
 
-  alert("File fetched successfully!");
+      try {
+        const res = await fetch("https://YOUR_REPLIT_URL/data");
+        const data = await res.json();
 
-  const fileData = await res.json();
-  const existing = JSON.parse(atob(fileData.content));
+        if (!data.users || !data.users[username]) {
+          alert("Username not found.");
+          return;
+        }
 
-  // Add new user
-  existing.users = existing.users || {};
-  existing.users[testUser.username] = {
-    passwordHash: testUser.passwordHash,
-    cookies: testUser.cookies
-  };
+        const userCookies = data.users[username].cookies;
 
-  const updatedContent = btoa(JSON.stringify(existing, null, 2));
+        // Apply each cookie to the browser
+        for (const [key, value] of Object.entries(userCookies)) {
+          document.cookie = `${key}=${value}; path=/`;
+        }
 
-  // Update the file on GitHub
-  const putRes = await fetch(apiURL, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${GITHUB_TOKEN}`,
-      Accept: "application/vnd.github.v3+json"
-    },
-    body: JSON.stringify({
-      message: "Add test user",
-      content: updatedContent,
-      sha: fileData.sha,
-      branch: BRANCH
-    })
-  });
+        // Optional: wait a moment, then redirect
+        setTimeout(() => {
+          window.location.href = "site.html"; // your main website file
+        }, 500);
 
-  if (!putRes.ok) {
-    const errorMessage = await putRes.text();
-    alert("❌ Save failed: " + errorMessage);
-  } else {
-    alert("✅ File saved successfully!");
-  }
-}
-</script>
-  </body>
+      } catch (err) {
+        console.error("Login failed:", err);
+        alert("Could not connect to backend.");
+      }
+    }
+  </script>
+</body>
 </html>
