@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Login First</title>
+  <title>Secure Login</title>
   <style>
     body {
       font-family: sans-serif;
@@ -13,95 +13,59 @@
       align-items: center;
       height: 100vh;
     }
-    #loginForm, #welcome {
+
+    #container {
       background: #222;
       padding: 20px;
       border-radius: 10px;
-      display: none;
+      width: 300px;
     }
+
     input {
-      margin-bottom: 10px;
       width: 100%;
-      padding: 8px;
+      margin: 10px 0;
+      padding: 10px;
+      border: none;
       background: #333;
       color: white;
-      border: none;
       border-radius: 5px;
     }
+
     button {
+      width: 100%;
       padding: 10px;
-      background: #4caf50;
+      background: #4CAF50;
       color: white;
       border: none;
       border-radius: 5px;
-      width: 100%;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 10px;
+      font-size: 0.9em;
+      line-height: 1.4em;
+      color: #ccc;
+      white-space: pre-wrap;
+    }
+
+    #welcome {
+      display: none;
     }
   </style>
 </head>
 <body>
+  <div id="container">
+    <div id="loginForm">
+      <h2>Login</h2>
+      <input type="text" id="username" placeholder="Username" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="loginBtn">Login</button>
+      <div id="status">Waiting for input...</div>
+    </div>
 
-<div id="loginForm">
-  <h2>Login</h2>
-  <input type="text" id="username" placeholder="Username" />
-  <input type="password" id="password" placeholder="Password" />
-  <button onclick="login()">Login</button>
-  <p id="message"></p>
-</div>
-
-<div id="welcome">
-  <h2>Welcome!</h2>
-  <p id="cookieInfo"></p>
-</div>
-
-<script>
-  const backendURL = "https://shared-auth-backend.onrender.com/data";
-
-  document.getElementById("loginForm").style.display = "block";
-
-  async function login() {
-    const user = document.getElementById("username").value.trim();
-    const pass = document.getElementById("password").value;
-
-    const hash = await sha256(pass);
-
-    const res = await fetch(backendURL);
-    const data = await res.json();
-
-    const userData = data.users?.[user];
-    if (!userData) {
-      showMsg("❌ User not found");
-      return;
-    }
-
-    if (userData.passwordHash !== hash) {
-      showMsg("❌ Invalid password");
-      return;
-    }
-
-    // Set cookies
-    for (const [key, value] of Object.entries(userData.cookies || {})) {
-      document.cookie = `${key}=${value}; path=/`;
-    }
-
-    showWelcome(userData.cookies || {});
-  }
-
-  function showMsg(msg) {
-    document.getElementById("message").innerText = msg;
-  }
-
-  function showWelcome(cookies) {
-    document.getElementById("loginForm").style.display = "none";
-    document.getElementById("welcome").style.display = "block";
-    document.getElementById("cookieInfo").innerText = `Cookies applied:\n${JSON.stringify(cookies, null, 2)}`;
-  }
-
-  async function sha256(str) {
-    const buffer = new TextEncoder().encode(str);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
-  }
-</script>
-
-</body>
-</html>
+    <div id="welcome">
+      <h2>Welcome!</h2>
+      <div id="cookieInfo"></div>
+    </div>
+  </
