@@ -1,71 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Secure Login</title>
+  <meta charset="UTF-8" />
+  <title>Login to Sync Cookies</title>
   <style>
     body {
       font-family: sans-serif;
-      background: #111;
-      color: white;
+      background: #f0f0f0;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
-      height: 100vh;
+      padding: 2rem;
     }
-
-    #container {
-      background: #222;
-      padding: 20px;
-      border-radius: 10px;
-      width: 300px;
+    #login-box {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #ccc;
     }
-
-    input {
+    input, button {
+      margin: 0.5rem 0;
+      padding: 0.5rem;
       width: 100%;
-      margin: 10px 0;
-      padding: 10px;
-      border: none;
-      background: #333;
-      color: white;
-      border-radius: 5px;
+      font-size: 1rem;
     }
-
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
     #status {
-      margin-top: 10px;
-      font-size: 0.9em;
-      line-height: 1.4em;
-      color: #ccc;
-      white-space: pre-wrap;
-    }
-
-    #welcome {
-      display: none;
+      margin-top: 1rem;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="loginForm">
-      <h2>Login</h2>
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
-      <button id="loginBtn">Login</button>
-      <div id="status">Waiting for input...</div>
-    </div>
+  <div id="login-box">
+    <h2>Login</h2>
+    <input id="username" type="text" placeholder="Username" />
+    <input id="password" type="password" placeholder="Password" />
+    <button id="login-btn">Login</button>
+    <div id="status">🕒 Waiting for input...</div>
+  </div>
 
-    <div id="welcome">
-      <h2>Welcome!</h2>
-      <div id="cookieInfo"></div>
-    </div>
-  </
+  <script>
+    const backendURL = "https://shared-auth-backend.onrender.com/data";
+
+    async function sha256(text) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+    }
+
+    function updateStatus(message) {
+      document.getElementById("status").textContent = message;
+    }
+
+    document.getElementById("login-btn").addEventListener("click", async () => {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!username || !password) {
+        updateStatus("❌ Please enter both username and password");
+        return;
+      }
+
+      updateStatus("🔄 Fetching login data...");
+
+      try {
+        const res = await fetch(backendURL);
+        const data = await res.json();
+
+        if (!data.users || !data.users[username]) {
+          updateStatus("❌ Username not found");
+          return;
+        }
+
+        const user = data.users[username];
+        const hashedInput = await sha256(password);
+
+        if (hashedInput !== user.passwordHash) {
+          updateStatus("❌ Incorrect password");
+          return;
+        }
+
+        updateStatus("✅ Login successful. Syncing cookies...");
+
+        const cookies = user.cookies || {};
+        Object.entries(cookies).forEach(([key, value]) => {
+          document.cookie = `${key}=${value}; path=/`;
+        });
+
+        updateStatus(`🎉 Logged in as ${username}`);
+      } catch (err) {
+        console.error(err);
+        updateStatus("❌ Could not connect to backend");
+      }
+    });
+  </script>
+</body>
+</html>
