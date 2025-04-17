@@ -1,72 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Login / Signup</title>
   <style>
-    body { font-family: sans-serif; max-width: 400px; margin: auto; padding-top: 50px; }
-    input, button { display: block; margin: 10px 0; width: 100%; padding: 8px; }
-    #status { margin-top: 20px; }
+    body { font-family: sans-serif; background: #f0f0f0; padding: 2rem; }
+    .box { background: white; padding: 2rem; max-width: 400px; margin: auto; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; }
+    input { width: 100%; padding: 0.5rem; margin: 0.5rem 0; }
+    button { width: 100%; padding: 0.7rem; background: #333; color: white; border: none; cursor: pointer; }
+    button:hover { background: #555; }
+    .status { margin-top: 1rem; text-align: center; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>Login or Signup</h2>
+  <div class="box">
+    <h2>Account Access</h2>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
 
-  <input type="text" id="username" placeholder="Username" />
-  <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">🔐 Login</button>
+    <button onclick="signup()">🆕 Sign Up</button>
 
-  <button onclick="login()">🔐 Sign In</button>
-  <button onclick="signup()">🆕 Sign Up</button>
-
-  <div id="status">Waiting for input...</div>
+    <div class="status" id="status">⏳ Waiting for input...</div>
+  </div>
 
   <script>
-    const backendUrl = "https://shared-auth-backend.onrender.com";
+    const backend = "https://shared-auth-backend.onrender.com";
+
+    function updateStatus(msg, ok = false) {
+      const s = document.getElementById("status");
+      s.textContent = msg;
+      s.style.color = ok ? "green" : "red";
+    }
 
     async function login() {
-      updateStatus("Attempting login...");
-
-      const res = await sendRequest("/login");
-      if (res.success) updateStatus("✅ Login successful!");
-      else updateStatus("❌ " + res.message);
-    }
-
-    async function signup() {
-      updateStatus("Creating account...");
-
-      const res = await sendRequest("/signup");
-      if (res.success) updateStatus("✅ Account created!");
-      else updateStatus("❌ " + res.message);
-    }
-
-    async function sendRequest(endpoint) {
-      const username = document.getElementById("username").value;
+      updateStatus("🔄 Logging in...");
+      const username = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value;
-      const passwordHash = sha256(password); // Simple hash to match your format
+
+      if (!username || !password) return updateStatus("❌ Please enter both username and password");
 
       try {
-        const response = await fetch(`${backendUrl}${endpoint}`, {
+        const res = await fetch(`${backend}/signin`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, passwordHash })
+          body: JSON.stringify({ username, password })
         });
-        return await response.json();
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+
+        updateStatus("✅ Logged in!", true);
+
+        // Save cookies from server response
+        if (data.cookies) {
+          Object.entries(data.cookies).forEach(([key, val]) => {
+            document.cookie = `${key}=${val}; path=/`;
+          });
+        }
+
       } catch (err) {
-        updateStatus("❌ Could not connect to backend");
-        return { success: false, message: err.message };
+        updateStatus(`❌ ${err.message}`);
       }
     }
 
-    function updateStatus(msg) {
-      document.getElementById("status").innerText = msg;
-    }
+    async function signup() {
+      updateStatus("🔄 Creating account...");
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
 
-    // Simple SHA-256 hash using browser crypto API
-    function sha256(str) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(str);
-      return crypto.subtle.digest("SHA-256", data).then(buf => {
-        return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
-      });
+      if (!username || !password) return updateStatus("❌ Please enter both username and password");
+
+      try {
+        const res = await fetch(`${backend}/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Signup failed");
+
+        updateStatus("✅ Account created! You can now log in.", true);
+      } catch (err) {
+        updateStatus(`❌ ${err.message}`);
+      }
     }
   </script>
 </body>
