@@ -1,201 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login & Signup</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .form-group button {
-            width: 100%;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .form-group button:hover {
-            background-color: #45a049;
-        }
-        .message {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #888;
-        }
-        .status {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #333;
-        }
-    </style>
+  <title>Login / Signup</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: auto; padding-top: 50px; }
+    input, button { display: block; margin: 10px 0; width: 100%; padding: 8px; }
+    #status { margin-top: 20px; }
+  </style>
 </head>
 <body>
+  <h2>Login or Signup</h2>
 
-<div class="container">
-    <h2>Login / Signup</h2>
+  <input type="text" id="username" placeholder="Username" />
+  <input type="password" id="password" placeholder="Password" />
 
-    <div id="status" class="status">Loading...</div>
+  <button onclick="login()">🔐 Sign In</button>
+  <button onclick="signup()">🆕 Sign Up</button>
 
-    <!-- Login Form -->
-    <div id="loginForm">
-        <div class="form-group">
-            <label for="loginUsername">Username</label>
-            <input type="text" id="loginUsername" placeholder="Enter your username" required>
-        </div>
-        <div class="form-group">
-            <label for="loginPassword">Password</label>
-            <input type="password" id="loginPassword" placeholder="Enter your password" required>
-        </div>
-        <div class="form-group">
-            <button id="loginButton">Login</button>
-        </div>
-        <p class="message">Don't have an account? <a href="javascript:void(0);" id="switchToSignup">Signup</a></p>
-    </div>
+  <div id="status">Waiting for input...</div>
 
-    <!-- Signup Form -->
-    <div id="signupForm" style="display:none;">
-        <div class="form-group">
-            <label for="signupUsername">Username</label>
-            <input type="text" id="signupUsername" placeholder="Enter a username" required>
-        </div>
-        <div class="form-group">
-            <label for="signupPassword">Password</label>
-            <input type="password" id="signupPassword" placeholder="Create a password" required>
-        </div>
-        <div class="form-group">
-            <button id="signupButton">Signup</button>
-        </div>
-        <p class="message">Already have an account? <a href="javascript:void(0);" id="switchToLogin">Login</a></p>
-    </div>
-</div>
+  <script>
+    const backendUrl = "https://shared-auth-backend.onrender.com";
 
-<script>
-    // API URL for your backend
-    const backendURL = "https://shared-auth-backend.onrender.com";
+    async function login() {
+      updateStatus("Attempting login...");
 
-    // DOM Elements
-    const loginForm = document.getElementById("loginForm");
-    const signupForm = document.getElementById("signupForm");
-    const statusDiv = document.getElementById("status");
-    const switchToSignupLink = document.getElementById("switchToSignup");
-    const switchToLoginLink = document.getElementById("switchToLogin");
-
-    // Hide status initially
-    statusDiv.style.display = "none";
-
-    // Show signup form
-    switchToSignupLink.addEventListener("click", () => {
-        loginForm.style.display = "none";
-        signupForm.style.display = "block";
-    });
-
-    // Show login form
-    switchToLoginLink.addEventListener("click", () => {
-        signupForm.style.display = "none";
-        loginForm.style.display = "block";
-    });
-
-    // Handle Login
-    document.getElementById("loginButton").addEventListener("click", async () => {
-        const username = document.getElementById("loginUsername").value;
-        const password = document.getElementById("loginPassword").value;
-        const status = await handleLogin(username, password);
-        displayStatus(status);
-    });
-
-    // Handle Signup
-    document.getElementById("signupButton").addEventListener("click", async () => {
-        const username = document.getElementById("signupUsername").value;
-        const password = document.getElementById("signupPassword").value;
-        const status = await handleSignup(username, password);
-        displayStatus(status);
-    });
-
-    // Display status message
-    function displayStatus(message) {
-        statusDiv.innerText = message;
-        statusDiv.style.display = "block";
+      const res = await sendRequest("/login");
+      if (res.success) updateStatus("✅ Login successful!");
+      else updateStatus("❌ " + res.message);
     }
 
-    // Handle login functionality
-    async function handleLogin(username, password) {
-        try {
-            // Request login from backend
-            const response = await fetch(`${backendURL}/data`);
-            const users = await response.json();
-            const user = users[username];
-            
-            if (!user) {
-                return "User not found!";
-            }
+    async function signup() {
+      updateStatus("Creating account...");
 
-            if (user.passwordHash === password) {
-                document.cookie = `username=${username}; path=/`;
-                return `Welcome, ${username}! You are logged in.`;
-            } else {
-                return "Incorrect password!";
-            }
-        } catch (error) {
-            return "Failed to connect to backend.";
-        }
+      const res = await sendRequest("/signup");
+      if (res.success) updateStatus("✅ Account created!");
+      else updateStatus("❌ " + res.message);
     }
 
-    // Handle signup functionality
-    async function handleSignup(username, password) {
-        try {
-            // Check if the user already exists
-            const response = await fetch(`${backendURL}/data`);
-            const users = await response.json();
+    async function sendRequest(endpoint) {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const passwordHash = sha256(password); // Simple hash to match your format
 
-            if (users[username]) {
-                return "Username already taken!";
-            }
-
-            // Save new user to backend
-            const newUser = { username, passwordHash: password, cookies: {} };
-            const updateResponse = await fetch(`${backendURL}/data`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${GITHUB_TOKEN}`
-                },
-                body: JSON.stringify(newUser)
-            });
-
-            if (updateResponse.ok) {
-                return `Account created! You can now log in.`;
-            } else {
-                return "Failed to create account!";
-            }
-        } catch (error) {
-            return "Failed to connect to backend.";
-        }
+      try {
+        const response = await fetch(`${backendUrl}${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, passwordHash })
+        });
+        return await response.json();
+      } catch (err) {
+        updateStatus("❌ Could not connect to backend");
+        return { success: false, message: err.message };
+      }
     }
-</script>
+
+    function updateStatus(msg) {
+      document.getElementById("status").innerText = msg;
+    }
+
+    // Simple SHA-256 hash using browser crypto API
+    function sha256(str) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      return crypto.subtle.digest("SHA-256", data).then(buf => {
+        return Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
+      });
+    }
+  </script>
+</body>
+</html>
