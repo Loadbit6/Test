@@ -2,88 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Login & Signup</title>
-  <style>
-    body { font-family: sans-serif; background: #f4f4f4; padding: 2rem; }
-    form { background: white; padding: 1rem; margin: 1rem auto; max-width: 400px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    input, button { width: 100%; padding: 0.5rem; margin-top: 0.5rem; }
-    .switch { text-align: center; margin-top: 1rem; cursor: pointer; color: blue; text-decoration: underline; }
-    #status { text-align: center; margin-top: 1rem; font-weight: bold; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
 </head>
 <body>
-
-  <form id="authForm">
-    <h2 id="formTitle">Login</h2>
-    <input type="text" id="username" placeholder="Username" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <button type="submit" id="submitButton">Login</button>
-    <div class="switch" onclick="toggleMode()">Don't have an account? Create one</div>
-    <p id="status"></p>
+  <h2>Login</h2>
+  <form id="loginForm">
+    <input type="text" id="username" placeholder="Username" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button type="submit">Login</button>
   </form>
+  <div id="status"></div>
 
   <script>
-    let isLoginMode = true;
+    const loginForm = document.getElementById("loginForm");
+    const statusDiv = document.getElementById("status");
 
-    const form = document.getElementById("authForm");
-    const formTitle = document.getElementById("formTitle");
-    const submitButton = document.getElementById("submitButton");
-    const switchText = document.querySelector(".switch");
-    const status = document.getElementById("status");
-
-    function toggleMode() {
-      isLoginMode = !isLoginMode;
-      formTitle.textContent = isLoginMode ? "Login" : "Create Account";
-      submitButton.textContent = isLoginMode ? "Login" : "Register";
-      switchText.textContent = isLoginMode ? "Don't have an account? Create one" : "Already have an account? Login";
-      status.textContent = "";
-    }
-
-    form.addEventListener("submit", async (e) => {
+    // Handle login form submission
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
 
-      const endpoint = isLoginMode 
-        ? "https://shared-auth-backend.onrender.com/data" 
-        : "https://shared-auth-backend.onrender.com/create-user";
+      // Check if username and password are filled
+      if (!username || !password) {
+        statusDiv.textContent = "❌ Please fill in both fields.";
+        return;
+      }
 
-      const method = isLoginMode ? "GET" : "POST";
+      statusDiv.textContent = "Checking credentials...";
 
       try {
-        status.textContent = "⏳ Processing...";
-        
-        if (isLoginMode) {
-          const res = await fetch(endpoint);
-          const data = await res.json();
-          if (data.users?.[username]) {
-            const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
-            const hex = [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
-            if (data.users[username].passwordHash === hex) {
-              status.textContent = `✅ Welcome back, ${username}`;
-              // You could set cookies here
-            } else {
-              status.textContent = "❌ Invalid password";
-            }
-          } else {
-            status.textContent = "❌ Username not found";
-          }
-        } else {
-          const res = await fetch(endpoint, {
-            method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password })
-          });
-          const result = await res.json();
-          status.textContent = result.message || result.error;
+        // Send request to backend to fetch login.json
+        const response = await fetch("https://shared-auth-backend.onrender.com/data");
+
+        if (!response.ok) {
+          statusDiv.textContent = `❌ Could not connect to backend: ${response.statusText}`;
+          return;
         }
 
-      } catch (err) {
-        console.error(err);
-        status.textContent = "❌ Could not connect to backend";
+        const data = await response.json();
+        const users = data.users || {};
+
+        if (users[username]) {
+          // Compare the password with the hash (simple comparison, you should hash and compare in real use cases)
+          const user = users[username];
+          const passwordHash = user.passwordHash; // In reality, you'd hash the password and compare
+
+          if (password === passwordHash) {
+            statusDiv.textContent = "✅ Login successful!";
+            // Handle cookies or any further actions
+          } else {
+            statusDiv.textContent = "❌ Incorrect password.";
+          }
+        } else {
+          statusDiv.textContent = "❌ User not found.";
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        statusDiv.textContent = "❌ Failed to connect to backend.";
       }
     });
   </script>
-
 </body>
 </html>
