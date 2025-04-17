@@ -1,102 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Login to Sync Cookies</title>
+  <meta charset="UTF-8">
+  <title>Login & Signup</title>
   <style>
-    body {
-      font-family: sans-serif;
-      background: #f0f0f0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
-    }
-    #login-box {
-      background: white;
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 0 10px #ccc;
-    }
-    input, button {
-      margin: 0.5rem 0;
-      padding: 0.5rem;
-      width: 100%;
-      font-size: 1rem;
-    }
-    #status {
-      margin-top: 1rem;
-      font-weight: bold;
-    }
+    body { font-family: sans-serif; background: #f4f4f4; padding: 2rem; }
+    form { background: white; padding: 1rem; margin: 1rem auto; max-width: 400px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input, button { width: 100%; padding: 0.5rem; margin-top: 0.5rem; }
+    .switch { text-align: center; margin-top: 1rem; cursor: pointer; color: blue; text-decoration: underline; }
+    #status { text-align: center; margin-top: 1rem; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div id="login-box">
-    <h2>Login</h2>
-    <input id="username" type="text" placeholder="Username" />
-    <input id="password" type="password" placeholder="Password" />
-    <button id="login-btn">Login</button>
-    <div id="status">🕒 Waiting for input...</div>
-  </div>
+
+  <form id="authForm">
+    <h2 id="formTitle">Login</h2>
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit" id="submitButton">Login</button>
+    <div class="switch" onclick="toggleMode()">Don't have an account? Create one</div>
+    <p id="status"></p>
+  </form>
 
   <script>
-  const backendURL = "https://shared-auth-backend.onrender.com/data";
+    let isLoginMode = true;
 
-  async function sha256(text) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, "0"))
-      .join("");
-  }
+    const form = document.getElementById("authForm");
+    const formTitle = document.getElementById("formTitle");
+    const submitButton = document.getElementById("submitButton");
+    const switchText = document.querySelector(".switch");
+    const status = document.getElementById("status");
 
-  function updateStatus(message) {
-    document.getElementById("status").textContent = message;
-  }
-
-  document.getElementById("login-btn").addEventListener("click", async () => {
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-
-    if (!username || !password) {
-      updateStatus("❌ Please enter both username and password");
-      return;
+    function toggleMode() {
+      isLoginMode = !isLoginMode;
+      formTitle.textContent = isLoginMode ? "Login" : "Create Account";
+      submitButton.textContent = isLoginMode ? "Login" : "Register";
+      switchText.textContent = isLoginMode ? "Don't have an account? Create one" : "Already have an account? Login";
+      status.textContent = "";
     }
 
-    updateStatus("🔄 Connecting to backend...");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
 
-    try {
-      const res = await fetch(backendURL);
-      if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
+      const endpoint = isLoginMode 
+        ? "https://shared-auth-backend.onrender.com/data" 
+        : "https://shared-auth-backend.onrender.com/create-user";
 
-      const data = await res.json();
+      const method = isLoginMode ? "GET" : "POST";
 
-      if (!data.users || !data.users[username]) {
-        updateStatus("❌ Username not found");
-        return;
+      try {
+        status.textContent = "⏳ Processing...";
+        
+        if (isLoginMode) {
+          const res = await fetch(endpoint);
+          const data = await res.json();
+          if (data.users?.[username]) {
+            const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(password));
+            const hex = [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+            if (data.users[username].passwordHash === hex) {
+              status.textContent = `✅ Welcome back, ${username}`;
+              // You could set cookies here
+            } else {
+              status.textContent = "❌ Invalid password";
+            }
+          } else {
+            status.textContent = "❌ Username not found";
+          }
+        } else {
+          const res = await fetch(endpoint, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+          });
+          const result = await res.json();
+          status.textContent = result.message || result.error;
+        }
+
+      } catch (err) {
+        console.error(err);
+        status.textContent = "❌ Could not connect to backend";
       }
+    });
+  </script>
 
-      const user = data.users[username];
-      const hashedInput = await sha256(password);
-
-      if (hashedInput !== user.passwordHash) {
-        updateStatus("❌ Incorrect password");
-        return;
-      }
-
-      updateStatus("✅ Login successful. Syncing cookies...");
-
-      const cookies = user.cookies || {};
-      Object.entries(cookies).forEach(([key, value]) => {
-        document.cookie = `${key}=${value}; path=/`;
-      });
-
-      updateStatus(`🎉 Logged in as ${username}`);
-    } catch (err) {
-      updateStatus(`❌ Could not connect: ${err.message}`);
-    }
-  });
-</script>
 </body>
 </html>
