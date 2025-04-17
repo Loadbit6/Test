@@ -2,70 +2,106 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Login Portal</title>
+  <title>Login First</title>
   <style>
     body {
       font-family: sans-serif;
-      text-align: center;
-      padding: 50px;
-      background: #f0f0f0;
+      background: #111;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    #login-box {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      display: inline-block;
+    #loginForm, #welcome {
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
     }
     input {
+      margin-bottom: 10px;
+      width: 100%;
       padding: 8px;
-      margin: 10px;
-      width: 200px;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 5px;
     }
     button {
-      padding: 10px 20px;
-      cursor: pointer;
+      padding: 10px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      width: 100%;
     }
   </style>
 </head>
 <body>
-  <div id="login-box">
-    <h2>Login</h2>
-    <input type="text" id="username" placeholder="Enter your username"><br>
-    <button onclick="loginAndLoadCookies()">Login</button>
-  </div>
 
-  <script>
-    async function loginAndLoadCookies() {
-      const username = document.getElementById("username").value.trim();
-      if (!username) return alert("Please enter a username.");
+<div id="loginForm">
+  <h2>Login</h2>
+  <input type="text" id="username" placeholder="Username" />
+  <input type="password" id="password" placeholder="Password" />
+  <button onclick="login()">Login</button>
+  <p id="message"></p>
+</div>
 
-      try {
-        const res = await fetch("https://shared-auth-backend.onrender.com/data");
-        const data = await res.json();
+<div id="welcome">
+  <h2>Welcome!</h2>
+  <p id="cookieInfo"></p>
+</div>
 
-        if (!data.users || !data.users[username]) {
-          alert("Username not found.");
-          return;
-        }
+<script>
+  const backendURL = "https://shared-auth-backend.onrender.com/data";
 
-        const userCookies = data.users[username].cookies;
+  document.getElementById("loginForm").style.display = "block";
 
-        // Apply each cookie to the browser
-        for (const [key, value] of Object.entries(userCookies)) {
-          document.cookie = `${key}=${value}; path=/`;
-        }
+  async function login() {
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value;
 
-        // Optional: wait a moment, then redirect
-        setTimeout(() => {
-          window.location.href = "site.html"; // your main website file
-        }, 500);
+    const hash = await sha256(pass);
 
-      } catch (err) {
-        console.error("Login failed:", err);
-        alert("Could not connect to backend.");
-      }
+    const res = await fetch(backendURL);
+    const data = await res.json();
+
+    const userData = data.users?.[user];
+    if (!userData) {
+      showMsg("❌ User not found");
+      return;
     }
-  </script>
+
+    if (userData.passwordHash !== hash) {
+      showMsg("❌ Invalid password");
+      return;
+    }
+
+    // Set cookies
+    for (const [key, value] of Object.entries(userData.cookies || {})) {
+      document.cookie = `${key}=${value}; path=/`;
+    }
+
+    showWelcome(userData.cookies || {});
+  }
+
+  function showMsg(msg) {
+    document.getElementById("message").innerText = msg;
+  }
+
+  function showWelcome(cookies) {
+    document.getElementById("loginForm").style.display = "none";
+    document.getElementById("welcome").style.display = "block";
+    document.getElementById("cookieInfo").innerText = `Cookies applied:\n${JSON.stringify(cookies, null, 2)}`;
+  }
+
+  async function sha256(str) {
+    const buffer = new TextEncoder().encode(str);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+</script>
+
 </body>
 </html>
