@@ -40,62 +40,63 @@
   </div>
 
   <script>
-    const backendURL = "https://shared-auth-backend.onrender.com/data";
+  const backendURL = "https://shared-auth-backend.onrender.com/data";
 
-    async function sha256(text) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(text);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("");
+  async function sha256(text) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  function updateStatus(message) {
+    document.getElementById("status").textContent = message;
+  }
+
+  document.getElementById("login-btn").addEventListener("click", async () => {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!username || !password) {
+      updateStatus("❌ Please enter both username and password");
+      return;
     }
 
-    function updateStatus(message) {
-      document.getElementById("status").textContent = message;
-    }
+    updateStatus("🔄 Connecting to backend...");
 
-    document.getElementById("login-btn").addEventListener("click", async () => {
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value;
+    try {
+      const res = await fetch(backendURL);
+      if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
 
-      if (!username || !password) {
-        updateStatus("❌ Please enter both username and password");
+      const data = await res.json();
+
+      if (!data.users || !data.users[username]) {
+        updateStatus("❌ Username not found");
         return;
       }
 
-      updateStatus("🔄 Fetching login data...");
+      const user = data.users[username];
+      const hashedInput = await sha256(password);
 
-      try {
-        const res = await fetch(backendURL);
-        const data = await res.json();
-
-        if (!data.users || !data.users[username]) {
-          updateStatus("❌ Username not found");
-          return;
-        }
-
-        const user = data.users[username];
-        const hashedInput = await sha256(password);
-
-        if (hashedInput !== user.passwordHash) {
-          updateStatus("❌ Incorrect password");
-          return;
-        }
-
-        updateStatus("✅ Login successful. Syncing cookies...");
-
-        const cookies = user.cookies || {};
-        Object.entries(cookies).forEach(([key, value]) => {
-          document.cookie = `${key}=${value}; path=/`;
-        });
-
-        updateStatus(`🎉 Logged in as ${username}`);
-      } catch (err) {
-        console.error(err);
-        updateStatus("❌ Could not connect to backend");
+      if (hashedInput !== user.passwordHash) {
+        updateStatus("❌ Incorrect password");
+        return;
       }
-    });
-  </script>
+
+      updateStatus("✅ Login successful. Syncing cookies...");
+
+      const cookies = user.cookies || {};
+      Object.entries(cookies).forEach(([key, value]) => {
+        document.cookie = `${key}=${value}; path=/`;
+      });
+
+      updateStatus(`🎉 Logged in as ${username}`);
+    } catch (err) {
+      updateStatus(`❌ Could not connect: ${err.message}`);
+    }
+  });
+</script>
 </body>
 </html>
